@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Category {
+  TECH
+  GAMING
+  VLOGS
+  COMEDY
+  FINANCE
+}
+
+model CreatorBid {
+  id              String   @id @default(cuid())
+  channelName     String
+  channelUrl      String
+  avatarUrl       String
+  subscriberCount Int
+  category        Category
+  bidAmount       Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category, bidAmount])
+  @@index([channelUrl, category])
+}

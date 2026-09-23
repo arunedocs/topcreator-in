@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TopCreator.in
 
-## Getting Started
+A gamified, viral micro-SaaS for the Indian creator economy — a live pay-to-rank leaderboard where YouTubers bid via UPI/Razorpay to claim #1 in niche categories.
 
-First, run the development server:
+Inspired by [outbid.lol](https://outbid.lol/).
+
+## Stack
+
+- **Frontend:** Next.js 16 (App Router), Tailwind CSS, Lucide React
+- **Backend:** Server Actions + API routes
+- **Database:** Prisma + SQLite (swap to PostgreSQL/Supabase for production)
+- **Payments:** Razorpay placeholder (mock flow in dev)
+
+## Getting started
 
 ```bash
+npm install
+npm run db:setup   # generate client, push schema, seed demo data
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env` and set:
 
-## Learn More
+```env
+DATABASE_URL="file:./dev.db"
+RAZORPAY_KEY_ID="your_key"
+RAZORPAY_KEY_SECRET="your_secret"
+NEXT_PUBLIC_RAZORPAY_KEY_ID="your_key"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
 
-To learn more about Next.js, take a look at the following resources:
+Without real Razorpay keys, the app uses a **mock payment flow** so you can test bids end-to-end.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Dark-mode landing page with hero CTA
+- Category tabs: Tech, Gaming, Vlogs, Comedy, Finance
+- Live leaderboard cards with rank, avatar, subs, bid amount
+- Outbid modal with ₹20 minimum increment rule
+- Share/flex modal for #1 holders (X + Instagram caption copy)
 
-## Deploy on Vercel
+## Project structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+  app/                 # Routes & API
+  actions/bids.ts      # Server actions for orders + confirmation
+  components/          # UI modules
+  lib/                 # Prisma, Razorpay, utils, constants
+prisma/
+  schema.prisma        # CreatorBid model
+  seed.ts              # Demo Indian creator data
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Bid rules
+
+- First bid in a category: **₹49** minimum
+- Outbid #1: current top bid **+ ₹20**
+- Rank = bid amount (higher wins)
+
+## Deploy
+
+1. Switch `DATABASE_URL` to PostgreSQL (Supabase connection string)
+2. Add Razorpay live keys
+3. Deploy to Vercel
+
+```bash
+npm run build
+```
