@@ -1,14 +1,21 @@
 import { ArrowUpRight, IndianRupee, Trophy } from "lucide-react";
 import { APP_TAGLINE, BID_INCREMENT } from "@/lib/constants";
+import { ResetCountdown } from "@/components/leaderboard/ResetCountdown";
 import { Button } from "@/components/ui/Button";
 
 interface HeroProps {
   topBidAmount: number;
   categoryLabel: string;
   onBidClick: () => void;
+  onScrollToLeaderboard: () => void;
 }
 
-export function Hero({ topBidAmount, categoryLabel, onBidClick }: HeroProps) {
+export function Hero({
+  topBidAmount,
+  categoryLabel,
+  onBidClick,
+  onScrollToLeaderboard,
+}: HeroProps) {
   return (
     <section className="relative overflow-hidden border-b border-zinc-800/80">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(251,146,60,0.12),transparent_45%),radial-gradient(circle_at_80%_20%,rgba(244,63,94,0.08),transparent_30%)]" />
@@ -16,9 +23,12 @@ export function Hero({ topBidAmount, categoryLabel, onBidClick }: HeroProps) {
 
       <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
         <div className="max-w-3xl">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-xs text-zinc-300">
-            <Trophy className="h-3.5 w-3.5 text-amber-400" />
-            India&apos;s pay-to-rank creator board
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-xs text-zinc-300">
+              <Trophy className="h-3.5 w-3.5 text-amber-400" />
+              India&apos;s pay-to-rank creator board
+            </div>
+            <ResetCountdown compact />
           </div>
 
           <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-6xl sm:leading-[1.05]">
@@ -38,7 +48,11 @@ export function Hero({ topBidAmount, categoryLabel, onBidClick }: HeroProps) {
               <IndianRupee className="h-4 w-4" />
               Outbid {categoryLabel} #1
             </Button>
-            <Button variant="secondary" onClick={onBidClick} className="h-12 px-6">
+            <Button
+              variant="secondary"
+              onClick={onScrollToLeaderboard}
+              className="h-12 px-6"
+            >
               See live ranks
               <ArrowUpRight className="h-4 w-4" />
             </Button>
@@ -57,7 +71,7 @@ export function Hero({ topBidAmount, categoryLabel, onBidClick }: HeroProps) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 backdrop-blur-sm">
       <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">{label}</p>
       <p className="mt-1 text-sm font-medium text-zinc-100">{value}</p>
     </div>

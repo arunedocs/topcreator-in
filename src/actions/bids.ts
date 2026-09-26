@@ -1,48 +1,80 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { BID_INCREMENT, MIN_BID_AMOUNT, type CategoryId } from "@/lib/constants";
-import { getTopBid, upsertCreatorBid } from "@/lib/leaderboard";
-import { createRazorpayOrder, verifyRazorpaySignature } from "@/lib/razorpay";
+import { type CategoryId } from "@/lib/constants";
+import { confirmVerifiedBid, getServerMinimumBid } from "@/lib/bid-engine";
+import { getTopBid } from "@/lib/leaderboard";
+import { appendOwnedClaimToken } from "@/lib/ownership";
+import { verifyRazorpaySignature } from "@/lib/razorpay";
 import { getAvatarUrl, normalizeYouTubeUrl } from "@/lib/utils";
+import { isValidCategory, validateYouTubeUrl } from "@/lib/validation";
+import { lookupCreatorByUrl } from "@/lib/creators";
+import { prisma } from "@/lib/prisma";
+import { Category } from "@prisma/client";
 
-export async function createBidOrder(formData: FormData) {
+export async function validateBidForm(formData: FormData) {
   const channelName = String(formData.get("channelName") ?? "").trim();
-  const channelUrl = normalizeYouTubeUrl(String(formData.get("channelUrl") ?? ""));
-  const category = String(formData.get("category") ?? "TECH") as CategoryId;
+  const rawChannelUrl = String(formData.get("channelUrl") ?? "");
+  const categoryRaw = String(formData.get("category") ?? "TECH");
   const bidAmount = Number(formData.get("bidAmount"));
   const subscriberCount = Number(formData.get("subscriberCount") ?? 0);
 
-  if (!channelName || !channelUrl || !category || Number.isNaN(bidAmount)) {
-    return { error: "Please fill in all required fields." };
+  if (!channelName) {
+    return { error: "Channel name is required." };
   }
 
-  if (!channelUrl.includes("youtube.com") && !channelUrl.includes("youtu.be")) {
-    return { error: "Please enter a valid YouTube channel URL." };
+  if (channelName.length < 2) {
+    return { error: "Channel name looks too short." };
   }
+
+  const urlValidation = validateYouTubeUrl(rawChannelUrl);
+  if (!urlValidation.valid) {
+    return { error: urlValidation.error ?? "Invalid YouTube URL." };
+  }
+
+  if (!isValidCategory(categoryRaw)) {
+    return { error: "Please select a valid category." };
+  }
+
+  const category = categoryRaw as CategoryId;
+
+  if (Number.isNaN(bidAmount) || bidAmount <= 0) {
+    return { error: "Enter a valid bid amount." };
+  }
+
+  const channelUrl = normalizeYouTubeUrl(urlValidation.normalized);
+
+  const existingBid = await prisma.creatorBid.findUnique({
+    where: {
+      channelUrl_category: {
+        channelUrl,
+        category: category as Category,
+      },
+    },
+  });
 
   const currentTop = await getTopBid(category);
-  const minimumBid = currentTop > 0 ? currentTop + BID_INCREMENT : MIN_BID_AMOUNT;
+  const minimumBid = getServerMinimumBid(currentTop, existingBid?.bidAmount ?? null);
 
   if (bidAmount < minimumBid) {
     return {
-      error: `Minimum bid for #1 is ₹${minimumBid}.`,
+      error: `Minimum bid for this category is ₹${minimumBid}.`,
     };
   }
 
-  const order = await createRazorpayOrder(bidAmount, `bid_${Date.now()}`);
+  const existing = await lookupCreatorByUrl(channelUrl);
 
   return {
     success: true,
-    order,
     payload: {
       channelName,
       channelUrl,
       category,
       bidAmount,
-      subscriberCount: subscriberCount || 10_000,
+      subscriberCount: subscriberCount > 0 ? subscriberCount : 10_000,
       avatarUrl: getAvatarUrl(channelName, channelUrl),
     },
+    existing: existing ?? undefined,
   };
 }
 
@@ -51,11 +83,24 @@ export async function confirmBidPayment(formData: FormData) {
   const paymentId = String(formData.get("paymentId") ?? "");
   const signature = String(formData.get("signature") ?? "");
   const channelName = String(formData.get("channelName") ?? "");
-  const channelUrl = String(formData.get("channelUrl") ?? "");
-  const category = String(formData.get("category") ?? "TECH") as CategoryId;
+  const rawChannelUrl = String(formData.get("channelUrl") ?? "");
+  const categoryRaw = String(formData.get("category") ?? "TECH");
   const bidAmount = Number(formData.get("bidAmount"));
   const subscriberCount = Number(formData.get("subscriberCount"));
   const avatarUrl = String(formData.get("avatarUrl") ?? "");
+
+  if (!orderId || !paymentId || !signature) {
+    return { error: "Missing payment verification fields." };
+  }
+
+  if (!isValidCategory(categoryRaw)) {
+    return { error: "Invalid category." };
+  }
+
+  const urlValidation = validateYouTubeUrl(rawChannelUrl);
+  if (!urlValidation.valid || !channelName || Number.isNaN(bidAmount) || bidAmount <= 0) {
+    return { error: "Invalid bid payload." };
+  }
 
   const isValid = verifyRazorpaySignature(orderId, paymentId, signature);
 
@@ -63,16 +108,40 @@ export async function confirmBidPayment(formData: FormData) {
     return { error: "Payment verification failed." };
   }
 
-  await upsertCreatorBid({
-    channelName,
-    channelUrl,
-    category,
-    bidAmount,
-    subscriberCount,
-    avatarUrl,
-  });
+  try {
+    const result = await confirmVerifiedBid({
+      orderId,
+      paymentId,
+      signature,
+      channelName: channelName.trim(),
+      channelUrl: normalizeYouTubeUrl(urlValidation.normalized),
+      category: categoryRaw,
+      bidAmount,
+      subscriberCount: subscriberCount > 0 ? subscriberCount : 10_000,
+      avatarUrl: avatarUrl || getAvatarUrl(channelName, rawChannelUrl),
+    });
 
-  revalidatePath("/");
+    if (result.claimToken) {
+      await appendOwnedClaimToken(result.claimToken);
+    }
 
-  return { success: true };
+    revalidatePath("/");
+    revalidatePath("/rankings");
+    revalidatePath("/trending");
+    revalidatePath(`/creator/${result.slug}`);
+    revalidatePath("/dashboard");
+
+    return {
+      success: true as const,
+      rank: result.rank,
+      slug: result.slug,
+      category: result.category,
+      bidAmount: result.bidAmount,
+      previousRank: result.previousRank,
+      outbidCreatorName: result.outbidCreatorName,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not confirm bid.";
+    return { error: message };
+  }
 }

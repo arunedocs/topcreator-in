@@ -1,4 +1,14 @@
-import { BID_INCREMENT, MIN_BID_AMOUNT, type CategoryId } from "./constants";
+import {
+  APP_NAME,
+  APP_URL,
+  BID_INCREMENT,
+  CATEGORIES,
+  MIN_BID_AMOUNT,
+  type CategoryId,
+  type CategorySlug,
+} from "./constants";
+import type { BidSuccessPayload, LeaderboardEntry } from "./types";
+import { parseYouTubeChannel } from "./youtube";
 
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-IN", {
@@ -26,11 +36,14 @@ export function getMinimumBid(currentTopBid: number): number {
 }
 
 export function normalizeYouTubeUrl(url: string): string {
+  const parsed = parseYouTubeChannel(url);
+  if (parsed) return parsed.normalizedUrl;
+
   try {
-    const parsed = new URL(url.trim());
-    parsed.search = "";
-    parsed.hash = "";
-    return parsed.toString().replace(/\/$/, "");
+    const value = new URL(url.trim());
+    value.search = "";
+    value.hash = "";
+    return value.toString().replace(/\/$/, "");
   } catch {
     return url.trim();
   }
@@ -41,12 +54,116 @@ export function getAvatarUrl(name: string, seed?: string): string {
   return `https://ui-avatars.com/api/?name=${label}&background=18181b&color=f4f4f5&size=128&bold=true&format=svg&seed=${seed ?? name}`;
 }
 
+export function getCategoryLabel(category: CategoryId): string {
+  return CATEGORIES.find((item) => item.id === category)?.label ?? category;
+}
+
+export function getCategorySlug(category: CategoryId): CategorySlug | string {
+  return CATEGORIES.find((item) => item.id === category)?.slug ?? category.toLowerCase();
+}
+
+export function getCategoryBySlug(slug: string): (typeof CATEGORIES)[number] | undefined {
+  return CATEGORIES.find((item) => item.slug === slug || item.id === slug.toUpperCase());
+}
+
+export function getCategoryEmoji(category: CategoryId): string {
+  return CATEGORIES.find((item) => item.id === category)?.emoji ?? "✨";
+}
+
+export function buildProfileUrl(slug: string): string {
+  return `${APP_URL}/creator/${slug}`;
+}
+
 export function buildShareText(entry: {
   channelName: string;
   category: CategoryId;
   bidAmount: number;
+  rank?: number;
+  slug?: string;
 }): string {
-  return `I'm #1 on ${entry.category} at TopCreator.in 🏆\n\nPaid ${formatCurrency(entry.bidAmount)} to prove my channel hits different.\n\nThink you can outbid me? 👇\nhttps://topcreator.in`;
+  const label = getCategoryLabel(entry.category);
+  const rank = entry.rank ?? 1;
+  const url = entry.slug ? buildProfileUrl(entry.slug) : APP_URL;
+
+  return `I'm #${rank} in ${label} on ${APP_NAME} 🇮🇳\n\n${entry.channelName} · ${formatCurrency(entry.bidAmount)} bid\n\nThink you can outbid me? 👇\n${url}`;
+}
+
+export function buildTwitterShareText(entry: {
+  channelName: string;
+  category: CategoryId;
+  bidAmount: number;
+  rank?: number;
+  slug?: string;
+}): string {
+  const label = getCategoryLabel(entry.category);
+  const rank = entry.rank ?? 1;
+  const url = entry.slug ? buildProfileUrl(entry.slug) : APP_URL;
+  return `#${rank} in ${label} on ${APP_NAME} 🏆\n\n${entry.channelName} · ${formatCurrency(entry.bidAmount)}\n\nOutbid me 👇 ${url}`;
+}
+
+export function buildInstagramCaption(entry: {
+  channelName: string;
+  category: CategoryId;
+  bidAmount: number;
+  rank?: number;
+}): string {
+  const label = getCategoryLabel(entry.category);
+  const rank = entry.rank ?? 1;
+  return `#${rank} in ${label} on ${APP_NAME} 🚀\n\n${entry.channelName} · ${formatCurrency(entry.bidAmount)}\n\n#TopCreator #YouTubeIndia #CreatorEconomy #${label}`;
+}
+
+export function buildWhatsAppShareText(entry: {
+  channelName: string;
+  category: CategoryId;
+  bidAmount: number;
+  rank?: number;
+  slug?: string;
+}): string {
+  return buildShareText(entry);
+}
+
+export function buildActivityMessage(
+  channelName: string,
+  categoryLabel: string,
+  bidAmount: number
+): string {
+  return `${channelName} grabbed #1 in ${categoryLabel} with ${formatCurrency(bidAmount)}! 🔥`;
+}
+
+export function applyOptimisticBid(
+  entries: LeaderboardEntry[],
+  payload: BidSuccessPayload
+): LeaderboardEntry[] {
+  const existingIndex = entries.findIndex(
+    (entry) => entry.channelUrl === payload.channelUrl
+  );
+
+  const previous = existingIndex >= 0 ? entries[existingIndex] : null;
+  const optimisticEntry: LeaderboardEntry = {
+    id: previous?.id ?? `optimistic-${Date.now()}`,
+    rank: 1,
+    channelName: payload.channelName,
+    channelUrl: payload.channelUrl,
+    avatarUrl: payload.avatarUrl,
+    subscriberCount: payload.subscriberCount,
+    category: payload.category,
+    bidAmount: payload.bidAmount,
+    createdAt: new Date().toISOString(),
+    slug: payload.slug ?? previous?.slug ?? "",
+    handle: payload.handle ?? previous?.handle ?? "",
+    verified: previous?.verified ?? false,
+    previousRank: previous?.rank ?? null,
+    movement: previous ? previous.rank - 1 : 0,
+  };
+
+  const nextEntries =
+    existingIndex >= 0
+      ? entries.map((entry, index) => (index === existingIndex ? optimisticEntry : entry))
+      : [...entries, optimisticEntry];
+
+  return nextEntries
+    .sort((a, b) => b.bidAmount - a.bidAmount || a.createdAt.localeCompare(b.createdAt))
+    .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
 export function cn(...classes: Array<string | false | null | undefined>): string {

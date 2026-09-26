@@ -2,7 +2,7 @@
 
 import { Crown, ExternalLink, Share2, TrendingUp } from "lucide-react";
 import type { LeaderboardEntry } from "@/lib/types";
-import { cn, formatCurrency, formatSubscribers } from "@/lib/utils";
+import { cn, formatCurrency, formatSubscribers, getMinimumBid } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 
 interface LeaderboardCardProps {
@@ -104,7 +104,7 @@ export function LeaderboardCard({ entry, onShare }: LeaderboardCardProps) {
             ) : (
               <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
                 <TrendingUp className="h-3.5 w-3.5" />
-                Bid ₹{entry.bidAmount + 20}+ to outrank
+                Bid ₹{getMinimumBid(entry.bidAmount)}+ to outrank
               </span>
             )}
           </div>

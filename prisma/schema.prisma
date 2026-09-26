@@ -13,8 +13,72 @@ enum Category {
   VLOGS
   COMEDY
   FINANCE
+  EDUCATION
+  CODING
+  AI
+  BUSINESS
+  ENTERTAINMENT
+  MUSIC
+  FITNESS
+  FOOD
+  TRAVEL
+  BEAUTY
+  AUTOMOTIVE
+  SPORTS
+  SHORTS
 }
 
+enum PaymentStatus {
+  CREATED
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum ActivityType {
+  JOINED
+  BID_PLACED
+  BID_INCREASED
+  CLAIMED_FIRST
+  RANK_MOVED
+  VERIFIED
+}
+
+enum NotificationType {
+  OUTBID
+  RANK_CHANGED
+  VERIFIED
+  DAILY_WINNER
+}
+
+enum ReportReason {
+  FAKE_CREATOR
+  IMPERSONATION
+  SPAM
+  INCORRECT_CATEGORY
+  OFFENSIVE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  REJECTED
+}
+
+enum BadgeType {
+  CHAMPION
+  STREAK_7
+  STREAK_30
+  FASTEST_RISER
+  BIGGEST_MOVER
+  RISING_CREATOR
+  CATEGORY_CHAMPION
+  VERIFIED
+}
+
+/// Live ranking row. Unique per YouTube URL + category. Never delete on outbid.
 model CreatorBid {
   id              String   @id @default(cuid())
   channelName     String
@@ -26,6 +90,230 @@ model CreatorBid {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  creatorId    String?
+  creator      Creator? @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  slug         String?
+  handle       String?
+  previousRank Int?
+  previousBid  Int?
+  rankAtUpdate Int?
+
+  payments   Payment[]
+  bidHistory BidHistory[]
+
+  @@unique([channelUrl, category])
   @@index([category, bidAmount])
-  @@index([channelUrl, category])
+  @@index([slug])
+  @@index([creatorId])
+  @@index([createdAt])
+}
+
+model Creator {
+  id                      String    @id @default(cuid())
+  slug                    String    @unique
+  channelName             String
+  channelUrl              String    @unique
+  channelId               String?   @unique
+  handle                  String
+  avatarUrl               String
+  subscriberCount         Int       @default(0)
+  videoCount              Int       @default(0)
+  category                Category
+  verified                Boolean   @default(false)
+  verificationCode        String?
+  verificationSubmittedAt DateTime?
+  suspended               Boolean   @default(false)
+  claimToken              String    @unique
+  profileViews            Int       @default(0)
+  youtubeClicks           Int       @default(0)
+  shareCount              Int       @default(0)
+  daysAtOne               Int       @default(0)
+  currentStreak           Int       @default(0)
+  highestBid              Int       @default(0)
+  joinedAt                DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  bids           CreatorBid[]
+  bidHistory     BidHistory[]
+  snapshots      RankingSnapshot[]
+  activities     ActivityEvent[]
+  notifications  Notification[]
+  clicks         ClickEvent[]
+  shares         ShareEvent[]
+  views          ProfileView[]
+  reports        Report[]
+  badges         CreatorBadge[]
+  payments       Payment[]
+  verifications  CreatorVerification[]
+
+  @@index([category])
+  @@index([handle])
+  @@index([joinedAt])
+  @@index([verified])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?       @unique
+  razorpaySignature String?
+  amountPaise       Int
+  currency          String        @default("INR")
+  status            PaymentStatus @default(CREATED)
+  channelName       String
+  channelUrl        String
+  category          Category
+  bidAmount         Int
+  subscriberCount   Int           @default(0)
+  avatarUrl         String        @default("")
+  mock              Boolean       @default(false)
+  creatorId         String?
+  creator           Creator?      @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  creatorBidId      String?
+  creatorBid        CreatorBid?   @relation(fields: [creatorBidId], references: [id], onDelete: SetNull)
+  createdAt         DateTime      @default(now())
+  verifiedAt        DateTime?
+
+  @@index([status, createdAt])
+  @@index([channelUrl])
+  @@index([category])
+}
+
+model BidHistory {
+  id           String      @id @default(cuid())
+  creatorId    String
+  creator      Creator     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  creatorBidId String?
+  creatorBid   CreatorBid? @relation(fields: [creatorBidId], references: [id], onDelete: SetNull)
+  category     Category
+  amount       Int
+  rankAfter    Int
+  previousRank Int?
+  createdAt    DateTime    @default(now())
+
+  @@index([creatorId, createdAt])
+  @@index([category, createdAt])
+}
+
+/// Daily ranking window snapshot. Date is YYYY-MM-DD in Asia/Kolkata.
+model RankingSnapshot {
+  id        String   @id @default(cuid())
+  date      String
+  category  Category
+  creatorId String
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  rank      Int
+  bidAmount Int
+  createdAt DateTime @default(now())
+
+  @@unique([date, category, creatorId])
+  @@index([date, category, rank])
+  @@index([date, rank])
+}
+
+model ActivityEvent {
+  id        String       @id @default(cuid())
+  type      ActivityType
+  message   String
+  creatorId String?
+  creator   Creator?     @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  category  Category?
+  bidAmount Int?
+  fromRank  Int?
+  toRank    Int?
+  createdAt DateTime     @default(now())
+
+  @@index([createdAt])
+  @@index([category, createdAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  creatorId String
+  creator   Creator          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  meta      Json?
+  createdAt DateTime         @default(now())
+
+  @@index([creatorId, createdAt])
+}
+
+model ClickEvent {
+  id        String   @id @default(cuid())
+  creatorId String
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  ipHash    String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([creatorId, createdAt])
+  @@index([ipHash, createdAt])
+}
+
+model ShareEvent {
+  id        String   @id @default(cuid())
+  creatorId String
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  channel   String
+  createdAt DateTime @default(now())
+
+  @@index([creatorId, createdAt])
+}
+
+model ProfileView {
+  id        String   @id @default(cuid())
+  creatorId String
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  ipHash    String?
+  createdAt DateTime @default(now())
+
+  @@index([creatorId, createdAt])
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  creatorId  String
+  creator    Creator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  reason     ReportReason
+  details    String?
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now())
+  resolvedAt DateTime?
+
+  @@index([status, createdAt])
+}
+
+model CreatorBadge {
+  id        String    @id @default(cuid())
+  creatorId String
+  creator   Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  type      BadgeType
+  awardedAt DateTime  @default(now())
+
+  @@unique([creatorId, type])
+}
+
+model CreatorVerification {
+  id         String   @id @default(cuid())
+  creatorId  String
+  creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  method     String   @default("DESCRIPTION_CODE")
+  code       String
+  status     String   @default("PENDING")
+  evidence   String?
+  createdAt  DateTime @default(now())
+  reviewedAt DateTime?
+
+  @@index([creatorId, status])
+}
+
+model AdminAudit {
+  id        String   @id @default(cuid())
+  action    String
+  target    String?
+  details   String?
+  createdAt DateTime @default(now())
 }
