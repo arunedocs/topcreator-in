@@ -52,8 +52,9 @@ export function SearchBox({ compact = false }: { compact?: boolean }) {
             setOpen(false);
           }
         }}
-        placeholder="Search creators..."
-        className="field-input h-10 rounded-full bg-zinc-900/80 pl-10 pr-4"
+        placeholder="Search creators or @handles"
+        aria-label="Search creators or YouTube handles"
+        className="field-input search-input"
       />
       {open ? (
         <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">

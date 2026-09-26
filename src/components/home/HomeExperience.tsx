@@ -12,6 +12,7 @@ import { useBid } from "@/components/bid/BidProvider";
 import { ActivityTicker } from "@/components/activity/ActivityTicker";
 import { LeaderboardRow } from "@/components/leaderboard/LeaderboardRow";
 import { ResetCountdown } from "@/components/leaderboard/ResetCountdown";
+import { TrustBand } from "@/components/home/TrustBand";
 import { ShareFlexModal } from "@/components/share/ShareFlexModal";
 import { Button } from "@/components/ui/Button";
 import type { LeaderboardEntry } from "@/lib/types";
@@ -70,6 +71,8 @@ export function HomeExperience({ data }: { data: HomePageData }) {
           </div>
         </div>
       </section>
+
+      <TrustBand />
 
       <ActivityTicker activity={activity} />
 
