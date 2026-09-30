@@ -33,7 +33,7 @@ export function LeaderboardRow({
             isTop ? "bg-amber-400 text-zinc-950" : isPodium ? "bg-zinc-800 text-white" : "bg-zinc-950 text-zinc-500"
           )}
         >
-          {isTop ? <Crown className="h-4 w-4" /> : `#${entry.rank}`}
+          {isTop ? <Crown className="h-4 w-4" /> : entry.rank > 0 ? `#${entry.rank}` : "—"}
         </div>
 
         <img

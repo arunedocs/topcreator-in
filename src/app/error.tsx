@@ -17,7 +17,7 @@ export default function Error({
         </div>
         <h1 className="text-xl font-semibold text-white">Something went wrong</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
-          The leaderboard couldn&apos;t load. Check your database connection and try again.
+          This page couldn&apos;t load. Nothing was changed. Try again.
         </p>
         <Button onClick={reset} className="mt-6">
           Retry

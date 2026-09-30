@@ -12,11 +12,13 @@ import { cn } from "@/lib/utils";
 
 export function RankingsBoard({
   initialEntries,
+  total = initialEntries.length,
   initialCategory,
   initialPeriod = "all-time",
   showCategoryFilter = true,
 }: {
   initialEntries: LeaderboardEntry[];
+  total?: number;
   initialCategory?: CategoryId;
   initialPeriod?: LeaderboardPeriod;
   showCategoryFilter?: boolean;
@@ -25,6 +27,7 @@ export function RankingsBoard({
   const [period, setPeriod] = useState<LeaderboardPeriod>(initialPeriod);
   const [category, setCategory] = useState<CategoryId | "ALL">(initialCategory ?? "ALL");
   const [entries, setEntries] = useState(initialEntries);
+  const [totalCount, setTotalCount] = useState(total);
   const [loading, setLoading] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [shareEntry, setShareEntry] = useState<LeaderboardEntry | null>(null);
@@ -34,12 +37,13 @@ export function RankingsBoard({
 
   const refresh = async (nextPeriod: LeaderboardPeriod, nextCategory: CategoryId | "ALL") => {
     setLoading(true);
-    const params = new URLSearchParams({ period: nextPeriod });
+    const params = new URLSearchParams({ period: nextPeriod, limit: "20" });
     if (nextCategory !== "ALL") params.set("category", nextCategory);
     const response = await fetch(`/api/leaderboard?${params.toString()}`);
     if (response.ok) {
-      const data = (await response.json()) as { leaderboard: LeaderboardEntry[] };
+      const data = (await response.json()) as { leaderboard: LeaderboardEntry[]; total?: number };
       setEntries(data.leaderboard);
+      setTotalCount(data.total ?? data.leaderboard.length);
     }
     setLoading(false);
   };
@@ -154,6 +158,30 @@ export function RankingsBoard({
               onShare={setShareEntry}
             />
           ))}
+          {entries.length < totalCount ? (
+            <Button
+              variant="secondary"
+              disabled={loading}
+              onClick={() => {
+                setLoading(true);
+                const params = new URLSearchParams({
+                  period,
+                  limit: String(entries.length + 20),
+                });
+                if (category !== "ALL") params.set("category", category);
+                void fetch(`/api/leaderboard?${params.toString()}`)
+                  .then(async (response) => {
+                    if (!response.ok) return;
+                    const data = (await response.json()) as { leaderboard: LeaderboardEntry[]; total?: number };
+                    setEntries(data.leaderboard);
+                    setTotalCount(data.total ?? data.leaderboard.length);
+                  })
+                  .finally(() => setLoading(false));
+              }}
+            >
+              Show more
+            </Button>
+          ) : null}
         </div>
       )}
 

@@ -24,12 +24,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const leaderboard =
+    const ranked =
       category && period === "all-time"
         ? await getLeaderboard(category)
         : await getLeaderboardByPeriod(period, category, date);
+    const requested = Number(searchParams.get("limit") ?? 0);
+    const limit = Number.isInteger(requested) && requested > 0 ? Math.min(requested, 100) : ranked.length;
+    const leaderboard = ranked.slice(0, limit);
 
-    return NextResponse.json({ leaderboard });
+    return NextResponse.json({ leaderboard, total: ranked.length });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Failed to fetch leaderboard" }, { status: 500 });

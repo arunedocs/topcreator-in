@@ -199,6 +199,7 @@ export function BidModal({
     }
 
     startTransition(async () => {
+      try {
       setPaymentState("preparing");
       const formData = new FormData();
       formData.set("channelName", channelName);
@@ -314,15 +315,16 @@ export function BidModal({
 
       const razorpay = new window.Razorpay(checkoutOptions);
 
-      razorpay.on("payment.failed", (response) => {
-        const description =
-          (response.error as { description?: string } | undefined)?.description ??
-          "Payment failed. Please try again.";
+      razorpay.on("payment.failed", () => {
         setPaymentState("failed");
-        setError(description);
+        setError("Payment failed. Please try again.");
       });
 
       razorpay.open();
+    } catch {
+      setPaymentState("failed");
+      setError("Network error. Check your connection and try again.");
+    }
     });
   };
 

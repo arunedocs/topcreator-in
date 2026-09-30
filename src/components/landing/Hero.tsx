@@ -28,7 +28,7 @@ export function Hero({
               <Trophy className="h-3.5 w-3.5 text-amber-400" />
               India&apos;s pay-to-rank creator board
             </div>
-            <ResetCountdown compact />
+            <ResetCountdown variant="pill" />
           </div>
 
           <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-6xl sm:leading-[1.05]">

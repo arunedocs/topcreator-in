@@ -29,6 +29,12 @@ export async function generateMetadata({
     openGraph: {
       title,
       description: `Current bid ${profile.currentBid}. Visit ${APP_NAME} to compete.`,
+      url: `/creator/${slug}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: `${profile.channelName} is ${rank} in ${getCategoryLabel(profile.category)}.`,
     },
   };
 }

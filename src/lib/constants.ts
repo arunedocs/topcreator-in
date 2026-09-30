@@ -68,3 +68,14 @@ export const BADGE_META = {
 
 export const ADMIN_COOKIE = "tc_admin";
 export const OWNER_COOKIE = "tc_owned";
+
+/** Subscriber count saved with a bid. Not a live YouTube subscriber total. */
+export const SUBSCRIBER_BANDS = [
+  { id: "all", label: "All", min: 0, max: Number.POSITIVE_INFINITY },
+  { id: "under-10k", label: "Under 10K", min: 0, max: 9_999 },
+  { id: "10k-100k", label: "10K–100K", min: 10_000, max: 99_999 },
+  { id: "100k-1m", label: "100K–1M", min: 100_000, max: 999_999 },
+  { id: "1m-plus", label: "1M+", min: 1_000_000, max: Number.POSITIVE_INFINITY },
+] as const;
+
+export type SubscriberBandId = (typeof SUBSCRIBER_BANDS)[number]["id"];

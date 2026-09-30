@@ -42,6 +42,7 @@ export function toLeaderboardEntry(bid: BidWithCreator, rank: number): Leaderboa
     movement,
     youtubeClicks: bid.creator?.youtubeClicks,
     profileViews: bid.creator?.profileViews,
+    shareCount: bid.creator?.shareCount,
   };
 }
 

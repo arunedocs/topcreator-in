@@ -1,5 +1,5 @@
-import { Category } from "@prisma/client";
-import type { CategoryId, LeaderboardPeriod } from "./constants";
+import { Category, type Creator, type CreatorBid } from "@prisma/client";
+import { CATEGORIES, type CategoryId, type LeaderboardPeriod } from "./constants";
 import { prisma } from "./prisma";
 import type { ActivityItem, LeaderboardEntry } from "./types";
 import { buildActivityMessage, getCategoryLabel } from "./utils";
@@ -298,41 +298,135 @@ export async function getLeaderboardByPeriod(
   }
 }
 
+type CreatorWithBid = Creator & { bids: CreatorBid[] };
+
+async function hydrateCreatorRanks(creators: CreatorWithBid[]): Promise<LeaderboardEntry[]> {
+  const categories = [
+    ...new Set(creators.map((creator) => (creator.bids[0]?.category ?? creator.category) as CategoryId)),
+  ];
+  const boards = new Map<CategoryId, LeaderboardEntry[]>();
+
+  await Promise.all(
+    categories.map(async (category) => {
+      boards.set(category, await getLeaderboard(category));
+    })
+  );
+
+  return creators.map((creator) => {
+    const category = (creator.bids[0]?.category ?? creator.category) as CategoryId;
+    const match = boards.get(category)?.find((entry) => entry.slug === creator.slug);
+    if (match) {
+      return {
+        ...match,
+        subscriberCount: creator.subscriberCount,
+        profileViews: creator.profileViews,
+        youtubeClicks: creator.youtubeClicks,
+        shareCount: creator.shareCount,
+      };
+    }
+
+    return {
+      id: creator.id,
+      rank: 0,
+      channelName: creator.channelName,
+      channelUrl: creator.channelUrl,
+      avatarUrl: creator.avatarUrl,
+      subscriberCount: creator.subscriberCount,
+      category,
+      bidAmount: creator.bids[0]?.bidAmount ?? 0,
+      createdAt: creator.joinedAt.toISOString(),
+      slug: creator.slug,
+      handle: creator.handle,
+      verified: creator.verified,
+      previousRank: creator.bids[0]?.previousRank ?? null,
+      movement: 0,
+      profileViews: creator.profileViews,
+      youtubeClicks: creator.youtubeClicks,
+      shareCount: creator.shareCount,
+    };
+  });
+}
+
 export async function searchCreators(query: string, limit = 12): Promise<LeaderboardEntry[]> {
   const q = query.trim();
   if (q.length < 2) return [];
+
+  const needle = q.toLowerCase().replace(/^@/, "");
+  const categoryIds = CATEGORIES.filter(
+    (category) => category.label.toLowerCase().includes(needle) || category.slug.includes(needle)
+  ).map((category) => category.id as Category);
 
   const creators = await prisma.creator.findMany({
     where: {
       suspended: false,
       OR: [
         { channelName: { contains: q, mode: "insensitive" } },
-        { handle: { contains: q.replace(/^@/, ""), mode: "insensitive" } },
+        { handle: { contains: needle, mode: "insensitive" } },
+        ...(categoryIds.length > 0 ? [{ category: { in: categoryIds } }] : []),
       ],
     },
     take: limit,
     include: { bids: { orderBy: { bidAmount: "desc" }, take: 1 } },
   });
 
-  return creators.map((creator, index) => {
-    const bid = creator.bids[0];
-    return {
-      id: creator.id,
-      rank: index + 1,
-      channelName: creator.channelName,
-      channelUrl: creator.channelUrl,
-      avatarUrl: creator.avatarUrl,
-      subscriberCount: creator.subscriberCount,
-      category: (bid?.category ?? creator.category) as CategoryId,
-      bidAmount: bid?.bidAmount ?? 0,
-      createdAt: creator.joinedAt.toISOString(),
-      slug: creator.slug,
-      handle: creator.handle,
-      verified: creator.verified,
-      previousRank: bid?.previousRank ?? null,
-      movement: 0,
-    };
+  return hydrateCreatorRanks(creators);
+}
+
+export async function getCreatorsBySlugs(slugs: string[]): Promise<LeaderboardEntry[]> {
+  const unique = [...new Set(slugs.map((slug) => slug.trim()).filter(Boolean))].slice(0, 40);
+  if (unique.length === 0) return [];
+
+  const creators = await prisma.creator.findMany({
+    where: { slug: { in: unique }, suspended: false },
+    include: { bids: { orderBy: { bidAmount: "desc" }, take: 1 } },
   });
+  const entries = await hydrateCreatorRanks(creators);
+  const bySlug = new Map(entries.map((entry) => [entry.slug, entry]));
+  return unique.flatMap((slug) => {
+    const entry = bySlug.get(slug);
+    return entry ? [entry] : [];
+  });
+}
+
+export async function getCreatorsByMetric(
+  metric: "profileViews" | "youtubeClicks" | "shareCount",
+  limit = 8
+): Promise<LeaderboardEntry[]> {
+  const creators = await prisma.creator.findMany({
+    where: { suspended: false, [metric]: { gt: 0 } },
+    orderBy: { [metric]: "desc" },
+    take: limit,
+    include: { bids: { orderBy: { bidAmount: "desc" }, take: 1 } },
+  });
+
+  return hydrateCreatorRanks(creators);
+}
+
+export async function getRisingCreators(
+  limit = 24,
+  band?: { min: number; max: number }
+): Promise<LeaderboardEntry[]> {
+  const creators = await prisma.creator.findMany({
+    where: {
+      suspended: false,
+      ...(band
+        ? {
+            subscriberCount: {
+              gte: band.min,
+              ...(Number.isFinite(band.max) ? { lte: band.max } : {}),
+            },
+          }
+        : {}),
+    },
+    orderBy: { joinedAt: "desc" },
+    take: 80,
+    include: { bids: { orderBy: { bidAmount: "desc" }, take: 1 } },
+  });
+
+  const ranked = await hydrateCreatorRanks(creators.filter((creator) => creator.bids.length > 0));
+  return ranked
+    .sort((a, b) => b.movement - a.movement || Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, limit);
 }
 
 export async function getHomeStats() {

@@ -8,6 +8,9 @@ import { REPORT_REASONS } from "@/lib/constants";
 import type { BidHistoryPoint, CreatorProfile } from "@/lib/types";
 import { formatCurrency, getCategoryLabel } from "@/lib/utils";
 import { useBid } from "@/components/bid/BidProvider";
+import { ResetCountdown } from "@/components/leaderboard/ResetCountdown";
+import { RankHistory } from "@/components/creator/RankHistory";
+import { WatchButton } from "@/components/creator/WatchButton";
 import { ShareFlexModal } from "@/components/share/ShareFlexModal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -50,6 +53,9 @@ export function CreatorProfileView({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <div className="mb-6 max-w-sm">
+        <ResetCountdown />
+      </div>
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-900/40">
         <div className="h-28 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,0.25),transparent_50%)]" />
         <div className="px-6 pb-6 sm:px-8">
@@ -87,8 +93,9 @@ export function CreatorProfileView({
                   })
                 }
               >
-                {owned ? "Increase bid" : "Outbid"}
+                {owned ? "Increase bid" : profile.currentRank === 1 ? "Outbid & claim #1" : "Outbid"}
               </Button>
+              <WatchButton slug={profile.slug} />
             </div>
           </div>
         </div>
@@ -131,6 +138,31 @@ export function CreatorProfileView({
         </div>
       ) : null}
 
+      {!owned ? (
+        <section className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+          <h2 className="font-medium text-white">Is this your YouTube channel?</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+            Claim this profile from this device to manage your information, track analytics, receive
+            outbid alerts, and compete for the category. Claiming happens when your bid payment is
+            verified — the browser cannot mark a profile as yours.
+          </p>
+          <Button
+            className="mt-4"
+            onClick={() =>
+              openBid({
+                category: profile.category,
+                channelName: profile.channelName,
+                channelUrl: profile.channelUrl,
+              })
+            }
+          >
+            Claim this profile
+          </Button>
+        </section>
+      ) : null}
+
+      <RankHistory history={history} />
+
       <section className="mt-10">
         <h2 className="text-xl font-semibold text-white">Bid history</h2>
         <div className="mt-4 grid gap-3">
@@ -155,23 +187,29 @@ export function CreatorProfileView({
 
       {owned && !profile.verified ? (
         <section className="mt-10 rounded-2xl border border-zinc-800 p-5">
-          <h2 className="font-medium text-white">Verify this channel</h2>
-          <p className="mt-2 text-sm text-zinc-400">
-            Add this code to your YouTube description, then submit. An admin can confirm if the YouTube
-            API provider is not connected.
+          <h2 className="font-medium text-white">Verify ownership</h2>
+          <ol className="mt-3 grid gap-2 text-sm text-zinc-400">
+            <li>1. YouTube channel — {profile.channelUrl}</li>
+            <li>2. Ownership — add the code below to the channel description.</li>
+            <li>3. Category — {getCategoryLabel(profile.category)}</li>
+            <li>4. Creator information — {profile.channelName} · @{profile.handle}</li>
+            <li>5. Verified profile — only after the server confirms the code.</li>
+          </ol>
+          <p className="mt-3 font-mono text-amber-300">{code ?? "Submit to generate a code"}</p>
+          <p className="mt-2 text-xs text-zinc-500">
+            This device cannot mark you verified. Until the YouTube API is connected, a submitted code waits for review.
           </p>
-          <p className="mt-3 font-mono text-amber-300">{code}</p>
           <Button
             className="mt-4"
             variant="secondary"
             onClick={async () => {
               const result = await requestVerification(profile.slug);
               if ("error" in result && result.error) {
-                toast(result.error);
+                toast(result.error === "Creator not found." ? "Creator not found." : "Verification failed. Try again.");
                 return;
               }
               setCode(result.code ?? profile.verificationCode);
-              toast(result.verified ? "Creator verified." : "Verification submitted for review.");
+              toast(result.verified ? "Creator verified." : "Verification submitted. It is not verified yet.");
             }}
           >
             Submit verification

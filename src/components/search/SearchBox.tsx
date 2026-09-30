@@ -52,8 +52,8 @@ export function SearchBox({ compact = false }: { compact?: boolean }) {
             setOpen(false);
           }
         }}
-        placeholder="Search creators or @handles"
-        aria-label="Search creators or YouTube handles"
+        placeholder="Search creators, channels or categories..."
+        aria-label="Search creators, channels or categories"
         className="field-input search-input"
       />
       {open ? (
@@ -65,19 +65,32 @@ export function SearchBox({ compact = false }: { compact?: boolean }) {
               <button
                 key={result.id}
                 type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-zinc-900"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-zinc-900"
                 onClick={() => {
                   router.push(`/creator/${result.slug}`);
                   setOpen(false);
                 }}
               >
+                <img
+                  src={result.avatarUrl}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-full bg-zinc-800 object-cover"
+                />
                 <span className="min-w-0">
-                  <span className="block truncate text-sm text-white">{result.channelName}</span>
+                  <span className="block truncate text-sm text-white">
+                    {result.channelName}
+                    {result.verified ? " · Verified" : ""}
+                  </span>
                   <span className="text-xs text-zinc-500">
-                    @{result.handle} · {getCategoryLabel(result.category)}
+                    @{result.handle} · {result.rank > 0 ? `#${result.rank}` : "Unranked"}{" "}
+                    {getCategoryLabel(result.category)}
+                    {result.movement > 0 ? ` · ↑ ${result.movement}` : ""}
                   </span>
                 </span>
-                <span className="text-xs text-zinc-400">{formatCurrency(result.bidAmount)}</span>
+                <span className="shrink-0 text-right text-xs text-zinc-400">
+                  {formatCurrency(result.bidAmount)}
+                  <span className="mt-1 block text-amber-200/80">View profile</span>
+                </span>
               </button>
             ))
           )}

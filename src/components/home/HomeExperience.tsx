@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowUpRight, Flame, IndianRupee, Sparkles, Trophy } from "lucide-react";
+import { ArrowUpRight, Flame, IndianRupee, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { HomePageData } from "@/lib/home";
 import { CATEGORIES, LEADERBOARD_POLL_MS } from "@/lib/constants";
 import type { ActivityItem } from "@/lib/types";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getCategoryLabel } from "@/lib/utils";
+import { LiveRankPreview } from "@/components/home/LiveRankPreview";
 import { formatRelativeTime } from "@/lib/time";
 import { useBid } from "@/components/bid/BidProvider";
 import { ActivityTicker } from "@/components/activity/ActivityTicker";
@@ -37,37 +38,41 @@ export function HomeExperience({ data }: { data: HomePageData }) {
     <>
       <section className="relative overflow-hidden border-b border-white/5">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,0.14),transparent_36%),radial-gradient(circle_at_90%_20%,rgba(255,255,255,0.04),transparent_28%)]" />
-        <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <div className="mb-6 flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
-              India&apos;s Creator Leaderboard
-            </span>
-            <ResetCountdown compact />
-          </div>
-          <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl sm:leading-[1.05]">
-            Pay. Rank. Get Discovered.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">
-            Compete for the top spot in India&apos;s creator categories. Bid via UPI, climb the board,
-            and send more people to your YouTube.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button onClick={() => openBid({ category: top?.category ?? "TECH" })} className="h-12 px-6 text-base">
-              <IndianRupee className="h-4 w-4" />
-              Claim your rank
-            </Button>
-            <Link href="/rankings">
-              <Button variant="secondary" className="h-12 px-6">
-                Explore creators
-                <ArrowUpRight className="h-4 w-4" />
+        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <div className="mb-6 flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
+                India&apos;s Creator Leaderboard
+              </span>
+              <ResetCountdown variant="pill" />
+            </div>
+            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl sm:leading-[1.05]">
+              Get Discovered. Climb the Rankings. Grow Your Audience.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">
+              Compete with creators across India, earn visibility in your category, and turn your
+              TopCreator rank into real audience discovery.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button onClick={() => openBid({ category: top?.category ?? "TECH" })} className="h-12 px-6 text-base">
+                <IndianRupee className="h-4 w-4" />
+                Claim Your Rank
               </Button>
-            </Link>
+              <Link href="/rankings">
+                <Button variant="secondary" className="h-12 px-6">
+                  Explore Creators
+                  <ArrowUpRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
-          <div className="mt-10 grid gap-3 sm:grid-cols-4">
-            <Stat label="Creators" value={String(data.stats.creators)} />
-            <Stat label="Live bids" value={String(data.stats.liveBids)} />
-            <Stat label="Bid volume" value={formatCurrency(data.stats.volume)} />
-            <Stat label="YouTube clicks" value={String(data.stats.youtubeClicks)} />
+          <div className="grid gap-4">
+            <ResetCountdown />
+          <LiveRankPreview
+            category={data.spotlightCategory}
+            initial={data.spotlight}
+            activity={activity.find((item) => item.category === data.spotlightCategory) ?? activity[0] ?? null}
+          />
           </div>
         </div>
       </section>
@@ -76,27 +81,7 @@ export function HomeExperience({ data }: { data: HomePageData }) {
 
       <ActivityTicker activity={activity} />
 
-      <Section title="Live ranking preview" href="/rankings" icon={<Trophy className="h-4 w-4 text-amber-400" />}>
-        {data.allTime.length === 0 ? (
-          <Empty text="No bids yet. Be the first to claim a rank." onClick={() => openBid()} />
-        ) : (
-          <div className="grid gap-3">
-            {data.allTime.slice(0, 5).map((entry) => (
-              <LeaderboardRow key={entry.id} entry={entry} showCategory onShare={setShareEntry} />
-            ))}
-          </div>
-        )}
-      </Section>
-
-      <Section title="Today's top creators" href="/leaderboard/today">
-        <div className="grid gap-3">
-          {data.today.slice(0, 5).map((entry) => (
-            <LeaderboardRow key={entry.id} entry={entry} showCategory />
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Trending now" href="/trending" icon={<Flame className="h-4 w-4 text-orange-400" />}>
+      <Section title="Trending creators" href="/trending" icon={<Flame className="h-4 w-4 text-orange-400" />}>
         <div className="grid gap-3 md:grid-cols-2">
           {data.trending.map((entry) => (
             <div key={entry.id} className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4">
@@ -135,7 +120,7 @@ export function HomeExperience({ data }: { data: HomePageData }) {
         </div>
       </section>
 
-      <Section title="Biggest movers" href="/rankings?period=movers">
+      <Section title="Biggest movers" href="/movers">
         <div className="grid gap-3">
           {data.movers.map((entry) => (
             <div key={entry.id} className="flex items-center justify-between rounded-2xl border border-zinc-800 px-4 py-3">
@@ -151,13 +136,33 @@ export function HomeExperience({ data }: { data: HomePageData }) {
         </div>
       </Section>
 
+      <Section title="Rising creators" href="/rising">
+        {data.rising.length === 0 ? (
+          <Empty text="No rising creators yet. The first bid starts the board." onClick={() => openBid()} />
+        ) : (
+          <div className="grid gap-3">
+            {data.rising.map((entry) => (
+              <LeaderboardRow key={entry.id} entry={entry} showCategory />
+            ))}
+          </div>
+        )}
+      </Section>
+
       {data.winner?.creator ? (
         <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
           <div className="rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-transparent p-6 sm:p-8">
             <p className="text-xs uppercase tracking-[0.18em] text-amber-300">Creator of the Day</p>
-            <h2 className="mt-3 text-3xl font-semibold text-white">{data.winner.creator.channelName}</h2>
+            <h2 className="mt-3 text-3xl font-semibold text-white">
+              {data.winner.creator.channelName}
+              {data.winner.creator.verified ? " ✓" : ""}
+            </h2>
             <p className="mt-2 text-sm text-zinc-400">
-              #{data.winner.rank} · {formatCurrency(data.winner.bidAmount)} · {data.winner.date}
+              #{data.winner.rank} {getCategoryLabel(data.winner.category as typeof data.spotlightCategory)} ·{" "}
+              {formatCurrency(data.winner.bidAmount)} current bid · {data.winner.date}
+            </p>
+            <p className="mt-1 text-sm text-zinc-500">
+              {data.winner.creator.profileViews.toLocaleString("en-IN")} profile views ·{" "}
+              {data.winner.creator.youtubeClicks.toLocaleString("en-IN")} YouTube clicks
             </p>
             <div className="mt-5 flex gap-3">
               <Link href={`/creator/${data.winner.creator.slug}`}>
@@ -187,11 +192,11 @@ export function HomeExperience({ data }: { data: HomePageData }) {
         <h2 className="text-2xl font-semibold text-white">How it works</h2>
         <div className="mt-6 grid gap-3 md:grid-cols-5">
           {[
-            "Find your category",
-            "Add your creator profile",
-            "Place your bid",
-            "Climb the leaderboard",
-            "Share your rank",
+            "Claim your profile",
+            "Choose your category",
+            "Compete for rank",
+            "Get discovered",
+            "Track your performance",
           ].map((step, index) => (
             <div key={step} className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-4">
               <p className="text-xs text-zinc-500">0{index + 1}</p>
@@ -204,11 +209,19 @@ export function HomeExperience({ data }: { data: HomePageData }) {
       <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <div className="rounded-3xl border border-white/10 bg-white/5 px-6 py-10 text-center">
           <Sparkles className="mx-auto h-6 w-6 text-amber-300" />
-          <h2 className="mt-4 text-3xl font-semibold text-white">Ready to be discovered?</h2>
-          <p className="mt-2 text-zinc-400">Claim your rank before midnight IST resets the daily board.</p>
+          <h2 className="mt-4 text-3xl font-semibold text-white">Ready to claim your rank?</h2>
+          <p className="mt-2 text-zinc-400">
+            Paid bids set the leaderboard. Views, clicks, and shares are counted separately.
+          </p>
           <Button onClick={() => openBid()} className="mt-6">
-            Claim your rank
+            Claim Your Rank
           </Button>
+        </div>
+        <div className="mt-8 grid gap-3 sm:grid-cols-4">
+          <Stat label="Creators" value={String(data.stats.creators)} />
+          <Stat label="Live bids" value={String(data.stats.liveBids)} />
+          <Stat label="Bid volume" value={formatCurrency(data.stats.volume)} />
+          <Stat label="YouTube clicks" value={String(data.stats.youtubeClicks)} />
         </div>
       </section>
 

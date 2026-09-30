@@ -23,6 +23,7 @@ export default async function DashboardPage() {
           bids: { orderBy: { bidAmount: "desc" }, take: 1 },
           notifications: { orderBy: { createdAt: "desc" }, take: 8 },
           bidHistory: { orderBy: { createdAt: "asc" } },
+          payments: { where: { status: "VERIFIED" }, select: { amountPaise: true } },
         },
       })
     : [];
@@ -86,11 +87,29 @@ export default async function DashboardPage() {
               <Dash label="Previous rank" value={bid?.previousRank ? `#${bid.previousRank}` : "—"} />
               <Dash label="Current bid" value={formatCurrency(bid?.bidAmount ?? 0)} />
               <Dash label="Overall rank" value={overallRank ? `#${overallRank}` : "—"} />
+              <Dash
+                label="Rank change"
+                value={
+                  bid?.previousRank && categoryRank
+                    ? bid.previousRank === categoryRank
+                      ? "—"
+                      : bid.previousRank > categoryRank
+                        ? `↑ ${bid.previousRank - categoryRank}`
+                        : `↓ ${categoryRank - bid.previousRank}`
+                    : "—"
+                }
+              />
               <Dash label="Profile views" value={String(creator.profileViews)} />
               <Dash label="YouTube clicks" value={String(creator.youtubeClicks)} />
               <Dash label="Shares" value={String(creator.shareCount)} />
               <Dash label="Days at #1" value={String(creator.daysAtOne)} />
             </div>
+
+            <Performance
+              spentPaise={creator.payments.reduce((sum, payment) => sum + payment.amountPaise, 0)}
+              views={creator.profileViews}
+              clicks={creator.youtubeClicks}
+            />
 
             <div className="mt-6 grid gap-4 lg:grid-cols-3">
               <MiniChart
@@ -111,6 +130,39 @@ export default async function DashboardPage() {
             </div>
           </section>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function Performance({
+  spentPaise,
+  views,
+  clicks,
+}: {
+  spentPaise: number;
+  views: number;
+  clicks: number;
+}) {
+  const spent = spentPaise / 100;
+  const perView = views > 0 && spent > 0 ? spent / views : null;
+  const perClick = clicks > 0 && spent > 0 ? spent / clicks : null;
+  const money = (value: number) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(value);
+
+  return (
+    <div className="mt-6 rounded-2xl border border-zinc-800 p-4">
+      <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">TopCreator performance</p>
+      <p className="mt-2 text-sm text-zinc-400">
+        Amount spent is the sum of verified payments. Views and clicks are totals since the listing
+        was created, not only visits caused by the bid.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Dash label="Amount spent" value={money(spent)} />
+        <Dash label="Profile views" value={String(views)} />
+        <Dash label="YouTube clicks" value={String(clicks)} />
+        <Dash label="Cost per view" value={perView == null ? "—" : money(perView)} />
+        <Dash label="Cost per click" value={perClick == null ? "—" : money(perClick)} />
       </div>
     </div>
   );

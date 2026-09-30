@@ -33,6 +33,7 @@ enum PaymentStatus {
   PENDING
   VERIFIED
   FAILED
+  REFUNDED
 }
 
 enum ActivityType {
@@ -49,6 +50,9 @@ enum NotificationType {
   RANK_CHANGED
   VERIFIED
   DAILY_WINNER
+  TOP_10
+  TOP_3
+  REACHED_FIRST
 }
 
 enum ReportReason {

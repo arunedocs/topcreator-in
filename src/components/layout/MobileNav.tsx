@@ -1,14 +1,14 @@
 "use client";
 
-import { Activity, Flame, Home, Trophy, UserRound } from "lucide-react";
+import { Activity, Compass, Home, Trophy, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/", label: "Home", icon: Home },
+  { href: "/search", label: "Discover", icon: Compass },
   { href: "/rankings", label: "Rankings", icon: Trophy },
-  { href: "/trending", label: "Trending", icon: Flame },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/dashboard", label: "Profile", icon: UserRound },
 ];
@@ -26,12 +26,13 @@ export function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "flex flex-col items-center gap-1 rounded-xl py-1 text-[10px]",
-                active ? "text-white" : "text-zinc-500"
+                active ? "font-medium text-amber-300" : "text-zinc-500"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className={cn("h-4 w-4", active && "text-amber-300")} />
               {item.label}
             </Link>
           );

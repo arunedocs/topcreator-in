@@ -25,6 +25,15 @@ export function getMillisecondsUntilReset(now = Date.now()): number {
   return Math.max(0, getNextResetDate().getTime() - now);
 }
 
+export function formatClock(ms: number): { hours: string; minutes: string; seconds: string } {
+  const safe = Math.max(0, ms);
+  const hours = Math.floor(safe / 3_600_000);
+  const minutes = Math.floor((safe % 3_600_000) / 60_000);
+  const seconds = Math.floor((safe % 60_000) / 1_000);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return { hours: pad(hours), minutes: pad(minutes), seconds: pad(seconds) };
+}
+
 export function formatCountdown(ms: number): string {
   if (ms <= 0) {
     return "Resetting soon…";

@@ -64,8 +64,17 @@ export async function confirmVerifiedBid(input: {
     throw new Error("Payment is locked to a different creator listing.");
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  let result;
+  try {
+  result = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.category}))`;
+
+    if (payment) {
+      const currentPayment = await tx.payment.findUnique({ where: { id: payment.id } });
+      if (currentPayment?.status === PaymentStatus.VERIFIED) {
+        throw new Error("ALREADY_CONFIRMED");
+      }
+    }
 
     const currentBoard = await tx.creatorBid.findMany({
       where: { category: input.category as Category },
@@ -209,13 +218,53 @@ export async function confirmVerifiedBid(input: {
         data: {
           creatorId: previousLeader.creatorId,
           type: "OUTBID",
-          title: "🔥 You were outbid!",
-          body: `You moved from #1 → #2 in ${categoryLabel}. Current #1 bid: ₹${input.bidAmount.toLocaleString("en-IN")}. Minimum to reclaim #1: ₹${input.bidAmount + BID_INCREMENT}.`,
+          title: "You've been outbid",
+          body: `You dropped from #1 to #2 in ${categoryLabel}. Current bid is ₹${input.bidAmount.toLocaleString("en-IN")}.`,
           meta: {
             category: input.category,
             currentTop: input.bidAmount,
             minimumBid: input.bidAmount + BID_INCREMENT,
           },
+        },
+      });
+    }
+
+    if (previousRank != null && previousRank !== rank) {
+      await tx.notification.create({
+        data: {
+          creatorId: creator.id,
+          type: "RANK_CHANGED",
+          title: "Your rank changed",
+          body: `You moved from #${previousRank} to #${rank} in ${categoryLabel}.`,
+        },
+      });
+    }
+
+    if (rank === 1 && previousRank !== 1) {
+      await tx.notification.create({
+        data: {
+          creatorId: creator.id,
+          type: "REACHED_FIRST",
+          title: "You reached #1",
+          body: `You are #1 in ${categoryLabel}.`,
+        },
+      });
+    } else if (rank <= 3 && (previousRank == null || previousRank > 3)) {
+      await tx.notification.create({
+        data: {
+          creatorId: creator.id,
+          type: "TOP_3",
+          title: "You reached the Top 3",
+          body: `You are #${rank} in ${categoryLabel}.`,
+        },
+      });
+    } else if (rank <= 10 && (previousRank == null || previousRank > 10)) {
+      await tx.notification.create({
+        data: {
+          creatorId: creator.id,
+          type: "TOP_10",
+          title: "You reached the Top 10",
+          body: `You are #${rank} in ${categoryLabel}.`,
         },
       });
     }
@@ -268,7 +317,30 @@ export async function confirmVerifiedBid(input: {
       isNewListing,
       movement: previousRank != null ? previousRank - rank : 0,
     };
-  });
+  }, { maxWait: 10_000, timeout: 20_000 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "ALREADY_CONFIRMED" && payment?.creatorId) {
+      const bid = await prisma.creatorBid.findUnique({
+        where: {
+          channelUrl_category: {
+            channelUrl: payment.channelUrl,
+            category: payment.category,
+          },
+        },
+        include: { creator: true },
+      });
+      return {
+        rank: bid?.rankAtUpdate ?? 1,
+        slug: bid?.creator?.slug ?? bid?.slug ?? "",
+        category: input.category,
+        bidAmount: payment.bidAmount,
+        previousRank: bid?.previousRank ?? null,
+        outbidCreatorName: null as string | null,
+        claimToken: bid?.creator?.claimToken,
+      };
+    }
+    throw error;
+  }
 
   await snapshotCategoryRanks(input.category, getIstDateString());
 

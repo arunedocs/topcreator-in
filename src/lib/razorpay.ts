@@ -81,6 +81,17 @@ export function verifyRazorpaySignature(
   return expected === signature;
 }
 
+export function verifyWebhookSignature(rawBody: string, signature: string): boolean {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET || RAZORPAY_KEY_SECRET;
+  if (!secret || !rawBody || !signature) return false;
+
+  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  const left = Buffer.from(expected);
+  const right = Buffer.from(signature);
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
 export function getRazorpayErrorStatus(error: unknown): number {
   if (
     typeof error === "object" &&

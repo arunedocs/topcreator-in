@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description:
-    "Pay. Rank. Get discovered. India's creator ranking and discovery platform — compete by category, share your rank, and send traffic to YouTube.",
+    "Bid. Rank. Get discovered. India's creator ranking and discovery platform — compete by category, share your rank, and send traffic to YouTube.",
   openGraph: {
     title: `${APP_NAME} — ${APP_TAGLINE}`,
     description: "Compete for the top spot in India's creator categories.",

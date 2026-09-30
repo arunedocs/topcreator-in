@@ -17,6 +17,7 @@ export interface LeaderboardEntry {
   movement: number;
   youtubeClicks?: number;
   profileViews?: number;
+  shareCount?: number;
 }
 
 export interface BidFormData {

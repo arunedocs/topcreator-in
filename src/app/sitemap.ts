@@ -28,6 +28,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/search",
     "/activity",
     "/battle",
+    "/rising",
+    "/movers",
+    "/pricing",
+    "/watchlist",
+    "/notifications",
   ].map((path) => ({
     url: `${APP_URL}${path}`,
     lastModified: new Date(),

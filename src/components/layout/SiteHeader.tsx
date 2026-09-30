@@ -2,21 +2,31 @@
 
 import { Crown, Menu, Search, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { APP_NAME } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { SearchBox } from "@/components/search/SearchBox";
 import { useBid } from "@/components/bid/BidProvider";
 
 const NAV = [
+  { href: "/search", label: "Discover" },
   { href: "/rankings", label: "Rankings" },
-  { href: "/categories", label: "Categories" },
   { href: "/trending", label: "Trending" },
-  { href: "/how-it-works", label: "How It Works" },
+  { href: "/rising", label: "Rising" },
+  { href: "/categories", label: "Categories" },
 ];
+
+function isCurrent(pathname: string, href: string) {
+  if (href === "/categories") return pathname.startsWith("/categories") || pathname.startsWith("/category/");
+  if (href === "/rankings") return pathname.startsWith("/rankings") || pathname.startsWith("/leaderboard");
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function SiteHeader() {
   const { openBid } = useBid();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -27,21 +37,32 @@ export function SiteHeader() {
             <Crown className="h-4 w-4 text-zinc-950" />
           </div>
           <div className="hidden min-[400px]:block">
-            <p className="text-sm font-semibold tracking-tight text-white">{APP_NAME}</p>
-            <p className="text-[11px] text-zinc-500">Pay. Rank. Get discovered.</p>
+            <p className="text-sm font-semibold tracking-tight text-white">
+              {APP_NAME}
+            </p>
+            <p className="text-[11px] text-zinc-500">
+              Bid. Rank. Get discovered.
+            </p>
           </div>
         </Link>
 
         <nav className="hidden items-center gap-5 lg:flex">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm text-zinc-400 transition hover:text-white"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) => {
+            const current = isCurrent(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={current ? "page" : undefined}
+                className={cn(
+                  "text-sm transition hover:text-white",
+                  current ? "font-medium text-white underline decoration-amber-400 decoration-2 underline-offset-8" : "text-zinc-400"
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="hidden min-w-0 flex-1 sm:block">
@@ -56,11 +77,31 @@ export function SiteHeader() {
           >
             <Search className="h-4 w-4" />
           </Link>
-          <Link href="/dashboard" className="hidden text-sm text-zinc-400 hover:text-white sm:inline">
+          <Link
+            href="/dashboard"
+            aria-current={isCurrent(pathname, "/dashboard") ? "page" : undefined}
+            className={cn(
+              "hidden text-sm hover:text-white xl:inline",
+              isCurrent(pathname, "/dashboard") ? "font-medium text-white" : "text-zinc-400"
+            )}
+          >
             Dashboard
           </Link>
-          <Button onClick={() => openBid()} className="hidden h-10 px-4 sm:inline-flex">
-            Submit Creator
+          <Link
+            href="/notifications"
+            aria-current={isCurrent(pathname, "/notifications") ? "page" : undefined}
+            className={cn(
+              "hidden text-sm hover:text-white xl:inline",
+              isCurrent(pathname, "/notifications") ? "font-medium text-white" : "text-zinc-400"
+            )}
+          >
+            Notifications
+          </Link>
+          <Button
+            onClick={() => openBid()}
+            className="hidden h-10 px-4 sm:inline-flex"
+          >
+            Claim Your Rank
           </Button>
           <button
             type="button"
@@ -68,7 +109,11 @@ export function SiteHeader() {
             onClick={() => setMenuOpen((value) => !value)}
             aria-label="Menu"
           >
-            {menuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {menuOpen ? (
+              <X className="h-4 w-4" />
+            ) : (
+              <Menu className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>
@@ -79,21 +124,37 @@ export function SiteHeader() {
             <SearchBox compact />
           </div>
           <div className="grid gap-2">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMenuOpen(false)}
-                className="rounded-xl px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-900"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <Link href="/dashboard" className="rounded-xl px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-900">
-              Dashboard
-            </Link>
-            <Button onClick={() => { setMenuOpen(false); openBid(); }} className="mt-2">
-              Submit Creator
+            {[
+              ...NAV,
+              { href: "/dashboard", label: "Dashboard" },
+              { href: "/notifications", label: "Notifications" },
+              { href: "/watchlist", label: "Watchlist" },
+              { href: "/how-it-works", label: "How it works" },
+            ].map((item) => {
+              const current = isCurrent(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={current ? "page" : undefined}
+                  onClick={() => setMenuOpen(false)}
+                  className={cn(
+                    "rounded-xl px-3 py-2 text-sm hover:bg-zinc-900",
+                    current ? "bg-zinc-900 font-medium text-white" : "text-zinc-300"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+            <Button
+              onClick={() => {
+                setMenuOpen(false);
+                openBid();
+              }}
+              className="mt-2"
+            >
+              Claim Your Rank
             </Button>
           </div>
         </div>

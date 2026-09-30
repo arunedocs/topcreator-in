@@ -1,71 +1,55 @@
-import Link from "next/link";
-import { LeaderboardRow } from "@/components/leaderboard/LeaderboardRow";
-import { getGlobalLeaderboard } from "@/lib/leaderboard";
-import { formatCurrency, getCategoryLabel } from "@/lib/utils";
 import type { Metadata } from "next";
+import { CategoryBattle } from "@/components/battle/CategoryBattle";
+import { CATEGORIES, type CategoryId } from "@/lib/constants";
+import { getLeaderboard, getRecentActivity } from "@/lib/leaderboard";
+import { getCategoryLabel } from "@/lib/utils";
+import { isValidCategory } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Creator battle",
-  description: "Compare two ranked creators side by side.",
+  title: "Bid battle",
+  description: "Current top three verified bids and recent bid activity. No invented events.",
 };
 
 export default async function BattlePage({
   searchParams,
 }: {
-  searchParams: Promise<{ a?: string; b?: string }>;
+  searchParams: Promise<{ category?: string }>;
 }) {
-  const { a, b } = await searchParams;
-  const board = await getGlobalLeaderboard(80);
-  const left = board.find((item) => item.slug === a) ?? board[0];
-  const right = board.find((item) => item.slug === b) ?? board[1];
-
-  if (!left || !right) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-semibold text-white">Creator battle</h1>
-        <p className="mt-3 text-sm text-zinc-400">Need at least two ranked creators to compare.</p>
-      </div>
-    );
-  }
+  const { category: raw } = await searchParams;
+  const category: CategoryId = raw && isValidCategory(raw) ? raw : "TECH";
+  const [board, activity] = await Promise.all([
+    getLeaderboard(category),
+    getRecentActivity(24),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <h1 className="text-3xl font-semibold text-white">Creator battle</h1>
-      <p className="mt-2 text-sm text-zinc-400">Comparison uses live rank and bid — no invented winner score.</p>
-      <div className="mt-8 grid gap-6 md:grid-cols-[1fr_auto_1fr]">
-        <CompareCard entry={left} />
-        <div className="flex items-center justify-center text-sm font-semibold text-zinc-500">VS</div>
-        <CompareCard entry={right} />
-      </div>
-      <div className="mt-10 grid gap-3">
-        <h2 className="text-sm text-zinc-500">Pick another matchup</h2>
-        {board.slice(0, 8).map((entry) => (
-          <LeaderboardRow key={entry.id} entry={entry} showCategory />
+      <h1 className="text-3xl font-semibold text-white">{getCategoryLabel(category)} bid battle</h1>
+      <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+        #1, #2, and #3 are the current verified bids. Activity is recorded events only.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {CATEGORIES.map((item) => (
+          <a
+            key={item.id}
+            href={`/battle?category=${item.id}`}
+            className={`rounded-full px-3 py-1 text-xs ${
+              item.id === category ? "bg-white text-zinc-950" : "border border-zinc-800 text-zinc-400"
+            }`}
+          >
+            {item.label}
+          </a>
         ))}
       </div>
-    </div>
-  );
-}
-
-function CompareCard({
-  entry,
-}: {
-  entry: Awaited<ReturnType<typeof getGlobalLeaderboard>>[number];
-}) {
-  return (
-    <div className="rounded-3xl border border-zinc-800 bg-zinc-900/30 p-6">
-      <p className="text-xs text-zinc-500">#{entry.rank} · {getCategoryLabel(entry.category)}</p>
-      <h2 className="mt-2 text-2xl font-semibold text-white">{entry.channelName}</h2>
-      <p className="text-sm text-zinc-500">@{entry.handle}</p>
-      <p className="mt-4 text-3xl font-semibold text-amber-300">{formatCurrency(entry.bidAmount)}</p>
-      <p className="mt-2 text-sm text-zinc-400">
-        Movement {entry.movement > 0 ? `+${entry.movement}` : entry.movement} · clicks {entry.youtubeClicks ?? 0}
-      </p>
-      <Link href={`/creator/${entry.slug}`} className="mt-5 inline-block text-sm text-white">
-        Outbid from profile →
-      </Link>
+      <div className="mt-8">
+        <CategoryBattle
+          category={category}
+          initial={board.slice(0, 3)}
+          activity={activity.filter((item) => item.category === category)}
+        />
+      </div>
     </div>
   );
 }

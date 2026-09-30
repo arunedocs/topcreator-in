@@ -141,7 +141,19 @@ export async function confirmBidPayment(formData: FormData) {
       outbidCreatorName: result.outbidCreatorName,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not confirm bid.";
-    return { error: message };
+    console.error("confirmBidPayment failed:", error);
+    return { error: publicBidError(error) };
   }
+}
+
+function publicBidError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.startsWith("Minimum bid")) return message;
+  if (message.startsWith("New bid must")) return "Your bid has to be higher than your current bid.";
+  if (message.includes("does not match")) return "That payment does not match this bid.";
+  if (message.includes("different creator")) return "That payment is locked to another listing.";
+  if (message.includes("Transaction already closed") || message.includes("expired transaction")) {
+    return "The rank update timed out before it finished, so this payment was not applied. Please try the bid once more.";
+  }
+  return "We couldn't confirm this bid. If money left your account, the rank will not be applied twice.";
 }

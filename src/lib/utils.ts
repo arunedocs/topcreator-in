@@ -74,18 +74,34 @@ export function buildProfileUrl(slug: string): string {
   return `${APP_URL}/creator/${slug}`;
 }
 
+export function buildAchievementHeadline(entry: {
+  channelName: string;
+  category: CategoryId;
+  rank?: number;
+  movement?: number;
+}): string {
+  const label = getCategoryLabel(entry.category);
+  const rank = entry.rank ?? 0;
+  if (rank === 1) return `I reached #1 ${label} Creator on TopCreator.`;
+  if (rank > 0 && rank <= 10) return `I entered the Top 10 in ${label} on TopCreator.`;
+  if ((entry.movement ?? 0) >= 5) {
+    return `I climbed ${entry.movement} positions in ${label} on TopCreator.`;
+  }
+  if (rank > 0) return `I'm #${rank} in ${label} on TopCreator.`;
+  return `${entry.channelName} on TopCreator.`;
+}
+
 export function buildShareText(entry: {
   channelName: string;
   category: CategoryId;
   bidAmount: number;
   rank?: number;
   slug?: string;
+  movement?: number;
 }): string {
-  const label = getCategoryLabel(entry.category);
-  const rank = entry.rank ?? 1;
   const url = entry.slug ? buildProfileUrl(entry.slug) : APP_URL;
 
-  return `I'm #${rank} in ${label} on ${APP_NAME} 🇮🇳\n\n${entry.channelName} · ${formatCurrency(entry.bidAmount)} bid\n\nThink you can outbid me? 👇\n${url}`;
+  return `${buildAchievementHeadline(entry)}\n\n${entry.channelName} · ${formatCurrency(entry.bidAmount)} bid\n\nThink you can outbid me?\n${url}`;
 }
 
 export function buildTwitterShareText(entry: {
@@ -94,11 +110,10 @@ export function buildTwitterShareText(entry: {
   bidAmount: number;
   rank?: number;
   slug?: string;
+  movement?: number;
 }): string {
-  const label = getCategoryLabel(entry.category);
-  const rank = entry.rank ?? 1;
   const url = entry.slug ? buildProfileUrl(entry.slug) : APP_URL;
-  return `#${rank} in ${label} on ${APP_NAME} 🏆\n\n${entry.channelName} · ${formatCurrency(entry.bidAmount)}\n\nOutbid me 👇 ${url}`;
+  return `${buildAchievementHeadline(entry)}\n\n${entry.channelName} · ${formatCurrency(entry.bidAmount)}\n\n${url}`;
 }
 
 export function buildInstagramCaption(entry: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatCountdown, getMillisecondsUntilReset } from "@/lib/reset";
+import { formatClock, formatCountdown, getMillisecondsUntilReset } from "@/lib/reset";
 
 export function useCountdown() {
   const [remainingMs, setRemainingMs] = useState(0);
@@ -17,5 +17,6 @@ export function useCountdown() {
   return {
     remainingMs,
     label: formatCountdown(remainingMs),
+    clock: formatClock(remainingMs),
   };
 }

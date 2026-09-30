@@ -10,7 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { APP_NAME } from "@/lib/constants";
 import { renderShareCardBlob, shareCardFilename } from "@/lib/share-card";
 import type { LeaderboardEntry } from "@/lib/types";
-import { buildShareText, buildTwitterShareText, buildWhatsAppShareText } from "@/lib/utils";
+import { buildProfileUrl, buildShareText, buildTwitterShareText, buildWhatsAppShareText } from "@/lib/utils";
 
 interface ShareFlexModalProps {
   open: boolean;
@@ -93,7 +93,7 @@ export function ShareFlexModal({ open, onClose, entry }: ShareFlexModalProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Share your rank"
+      title="Share achievement"
       description="This card is what people see when you post your rank."
       className="max-w-md"
     >
@@ -112,7 +112,7 @@ export function ShareFlexModal({ open, onClose, entry }: ShareFlexModalProps) {
           <Download className="h-4 w-4" />
           {busy === "download" ? "Exporting…" : "Download card"}
         </Button>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
           <a
             href={`https://wa.me/?text=${encodeURIComponent(whatsappText)}`}
             target="_blank"
@@ -133,6 +133,31 @@ export function ShareFlexModal({ open, onClose, entry }: ShareFlexModalProps) {
               Post on X
             </Button>
           </a>
+          <a
+            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(buildProfileUrl(entry.slug))}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => markShared("linkedin")}
+          >
+            <Button variant="secondary" className="w-full">
+              LinkedIn
+            </Button>
+          </a>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => {
+              void navigator.clipboard.writeText(buildProfileUrl(entry.slug)).then(
+                () => {
+                  toast("Link copied.");
+                  markShared("link");
+                },
+                () => setError("Could not copy the link.")
+              );
+            }}
+          >
+            Copy link
+          </Button>
         </div>
         <Button variant="outline" className="w-full" onClick={() => void copyText()}>
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
