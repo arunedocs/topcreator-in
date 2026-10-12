@@ -67,8 +67,6 @@ export async function confirmVerifiedBid(input: {
   let result;
   try {
   result = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.category}))`;
-
     if (payment) {
       const currentPayment = await tx.payment.findUnique({ where: { id: payment.id } });
       if (currentPayment?.status === PaymentStatus.VERIFIED) {

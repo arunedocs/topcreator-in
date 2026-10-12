@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
 }
 
 enum Category {
@@ -84,7 +84,7 @@ enum BadgeType {
 
 /// Live ranking row. Unique per YouTube URL + category. Never delete on outbid.
 model CreatorBid {
-  id              String   @id @default(cuid())
+  id              String   @id @default(cuid()) @map("_id")
   channelName     String
   channelUrl      String
   avatarUrl       String
@@ -113,7 +113,7 @@ model CreatorBid {
 }
 
 model Creator {
-  id                      String    @id @default(cuid())
+  id                      String    @id @default(cuid()) @map("_id")
   slug                    String    @unique
   channelName             String
   channelUrl              String    @unique
@@ -157,7 +157,7 @@ model Creator {
 }
 
 model Payment {
-  id                String        @id @default(cuid())
+  id                String        @id @default(cuid()) @map("_id")
   razorpayOrderId   String        @unique
   razorpayPaymentId String?       @unique
   razorpaySignature String?
@@ -184,7 +184,7 @@ model Payment {
 }
 
 model BidHistory {
-  id           String      @id @default(cuid())
+  id           String      @id @default(cuid()) @map("_id")
   creatorId    String
   creator      Creator     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   creatorBidId String?
@@ -201,7 +201,7 @@ model BidHistory {
 
 /// Daily ranking window snapshot. Date is YYYY-MM-DD in Asia/Kolkata.
 model RankingSnapshot {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   date      String
   category  Category
   creatorId String
@@ -216,7 +216,7 @@ model RankingSnapshot {
 }
 
 model ActivityEvent {
-  id        String       @id @default(cuid())
+  id        String       @id @default(cuid()) @map("_id")
   type      ActivityType
   message   String
   creatorId String?
@@ -232,7 +232,7 @@ model ActivityEvent {
 }
 
 model Notification {
-  id        String           @id @default(cuid())
+  id        String           @id @default(cuid()) @map("_id")
   creatorId String
   creator   Creator          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   type      NotificationType
@@ -246,7 +246,7 @@ model Notification {
 }
 
 model ClickEvent {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   creatorId String
   creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   ipHash    String?
@@ -258,7 +258,7 @@ model ClickEvent {
 }
 
 model ShareEvent {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   creatorId String
   creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   channel   String
@@ -268,7 +268,7 @@ model ShareEvent {
 }
 
 model ProfileView {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   creatorId String
   creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   ipHash    String?
@@ -278,7 +278,7 @@ model ProfileView {
 }
 
 model Report {
-  id         String       @id @default(cuid())
+  id         String       @id @default(cuid()) @map("_id")
   creatorId  String
   creator    Creator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   reason     ReportReason
@@ -291,7 +291,7 @@ model Report {
 }
 
 model CreatorBadge {
-  id        String    @id @default(cuid())
+  id        String    @id @default(cuid()) @map("_id")
   creatorId String
   creator   Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   type      BadgeType
@@ -301,7 +301,7 @@ model CreatorBadge {
 }
 
 model CreatorVerification {
-  id         String   @id @default(cuid())
+  id         String   @id @default(cuid()) @map("_id")
   creatorId  String
   creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   method     String   @default("DESCRIPTION_CODE")
@@ -315,7 +315,7 @@ model CreatorVerification {
 }
 
 model AdminAudit {
-  id        String   @id @default(cuid())
+  id        String   @id @default(cuid()) @map("_id")
   action    String
   target    String?
   details   String?

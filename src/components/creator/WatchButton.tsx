@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 
 const STORAGE_KEY = "tc_watchlist";
+const WATCHLIST_CHANGE_EVENT = "tc_watchlist_change";
 
 function readSlugs() {
   try {
@@ -14,12 +15,26 @@ function readSlugs() {
   }
 }
 
-export function WatchButton({ slug }: { slug: string }) {
-  const [watching, setWatching] = useState(false);
+function subscribeToWatchlist(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(WATCHLIST_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(WATCHLIST_CHANGE_EVENT, callback);
+  };
+}
 
-  useEffect(() => {
-    setWatching(readSlugs().includes(slug));
-  }, [slug]);
+function saveSlugs(slugs: string[]) {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(slugs.slice(0, 40)));
+  window.dispatchEvent(new Event(WATCHLIST_CHANGE_EVENT));
+}
+
+export function WatchButton({ slug }: { slug: string }) {
+  const watching = useSyncExternalStore(
+    subscribeToWatchlist,
+    () => readSlugs().includes(slug),
+    () => false
+  );
 
   return (
     <Button
@@ -27,8 +42,7 @@ export function WatchButton({ slug }: { slug: string }) {
       onClick={() => {
         const next = readSlugs().filter((item) => item !== slug);
         if (!watching) next.unshift(slug);
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next.slice(0, 40)));
-        setWatching(!watching);
+        saveSlugs(next);
       }}
     >
       {watching ? "Watching" : "♡ Watch"}
@@ -36,4 +50,8 @@ export function WatchButton({ slug }: { slug: string }) {
   );
 }
 
-export { STORAGE_KEY as WATCHLIST_STORAGE_KEY, readSlugs as readWatchlist };
+export {
+  STORAGE_KEY as WATCHLIST_STORAGE_KEY,
+  readSlugs as readWatchlist,
+  subscribeToWatchlist,
+};

@@ -12,15 +12,16 @@ const WINDOWS = [
 
 export function RankHistory({ history }: { history: BidHistoryPoint[] }) {
   const [windowId, setWindowId] = useState<(typeof WINDOWS)[number]["id"]>("all");
+  const [windowStartedAt, setWindowStartedAt] = useState<number | null>(null);
 
   const points = useMemo(() => {
     const window = WINDOWS.find((item) => item.id === windowId) ?? WINDOWS[3];
-    const cutoff = Number.isFinite(window.ms) ? Date.now() - window.ms : 0;
+    const cutoff = Number.isFinite(window.ms) && windowStartedAt !== null ? windowStartedAt - window.ms : 0;
     return history
       .filter((point) => Date.parse(point.createdAt) >= cutoff)
       .slice()
       .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
-  }, [history, windowId]);
+  }, [history, windowId, windowStartedAt]);
 
   const stats = useMemo(() => {
     if (points.length === 0) return null;
@@ -65,7 +66,10 @@ export function RankHistory({ history }: { history: BidHistoryPoint[] }) {
             <button
               key={item.id}
               type="button"
-              onClick={() => setWindowId(item.id)}
+              onClick={() => {
+                setWindowId(item.id);
+                setWindowStartedAt(Number.isFinite(item.ms) ? Date.now() : null);
+              }}
               className={`rounded-full px-3 py-1 text-xs ${
                 windowId === item.id ? "bg-white text-zinc-950" : "border border-zinc-800 text-zinc-400"
               }`}

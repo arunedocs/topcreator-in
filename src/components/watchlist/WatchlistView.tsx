@@ -1,22 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { LeaderboardRow } from "@/components/leaderboard/LeaderboardRow";
-import { readWatchlist } from "@/components/creator/WatchButton";
+import { readWatchlist, subscribeToWatchlist } from "@/components/creator/WatchButton";
 import type { LeaderboardEntry } from "@/lib/types";
 
 export function WatchlistView() {
   const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
+  const slugs = useSyncExternalStore(
+    subscribeToWatchlist,
+    () => readWatchlist().join(","),
+    () => ""
+  );
 
   useEffect(() => {
-    const slugs = readWatchlist();
-    if (slugs.length === 0) {
-      setEntries([]);
-      return;
-    }
+    if (!slugs) return;
 
-    void fetch(`/api/creators/cards?slugs=${encodeURIComponent(slugs.join(","))}`)
+    void fetch(`/api/creators/cards?slugs=${encodeURIComponent(slugs)}`)
       .then(async (response) => {
         if (!response.ok) {
           setEntries([]);
@@ -26,7 +27,18 @@ export function WatchlistView() {
         setEntries(json.creators);
       })
       .catch(() => setEntries([]));
-  }, []);
+  }, [slugs]);
+
+  if (!slugs) {
+    return (
+      <div className="mt-8 rounded-2xl border border-dashed border-zinc-800 px-6 py-12 text-center">
+        <p className="text-zinc-400">No watchlist creators yet.</p>
+        <Link href="/rankings" className="mt-3 inline-block text-sm text-amber-300">
+          Explore rankings
+        </Link>
+      </div>
+    );
+  }
 
   if (entries === null) {
     return <div className="mt-8 h-24 animate-pulse rounded-2xl bg-zinc-900/60" />;
